@@ -29,7 +29,10 @@ def main():
         trainer = OrionIITrainer(model_type='random_forest')
         trainer.train(X_train, y_train)
         trainer.evaluate(X_test, y_test, loader.label_encoder)
-        trainer.save_model('data/processed/orionii_best_model.joblib')
+
+        model_save_path = 'data/processed/orionii_trained_model.joblib'
+        trainer.save_model(model_save_path)
+        print(f"💾 Modelo guardado en: {model_save_path}")
         
         # 3. Usar detector para predecir candidatos
         print("\n" + "🔭 MÓDULO DE DETECCIÓN EN TIEMPO REAL")
@@ -37,46 +40,38 @@ def main():
         
         detector = OrionIIDetector('data/processed/orionii_best_model.joblib')
         
-        # Ejemplo 1: Predecir un candidato específico
-        print("\n🎯 EJEMPLO 1: DETECCIÓN INDIVIDUAL")
-        candidate_1 = {
-            'kepoi_name': 'K00001.01',
-            'koi_period': 10.5,
-            'koi_duration': 0.2,
-            'koi_depth': 0.001,
-            'koi_impact': 0.3,
-            'koi_prad': 1.2,
-            'koi_teq': 280,
-            'koi_insol': 0.9,
-            'koi_steff': 5800,
-            'koi_srad': 1.0,
-            'koi_score': 0.85,
-            'koi_kepmag': 12.5,
-            'koi_model_snr': 15.0
-        }
+        # FASE 2: PREDECIR con tabla nueva
+        print("\n🔭 FASE 2: PREDICIENDO NUEVOS CANDIDATOS")
+        file_path_predict = 'data/raw/test.csv'
         
-        result_1 = detector.predict_single_planet(candidate_1)
-        
-        # Ejemplo 2: Predecir múltiples candidatos del dataset
-        print("\n🎯 EJEMPLO 2: DETECCIÓN POR LOTES")
-        # Tomar algunos candidatos no confirmados del dataset
-        unconfirmed_candidates = clean_data[clean_data['koi_disposition'] == 'CANDIDATE'].head(5)
-        if len(unconfirmed_candidates) > 0:
-            batch_results = detector.predict_batch_planets(unconfirmed_candidates)
-        
+        loader_predict = OrionIIDataLoader()
+        nuevos_datos = loader_predict.load_koi_data([file_path_predict])
+        datos_limpios = loader_predict.clean_koi_data()
+
+        # ⚠️ CARGAR con el MISMO nombre
+        detector = OrionIIDetector(model_save_path)  # ← Usar misma ruta
+
+        # Predecir todos los candidatos nuevos
+        resultados = detector.predict_batch_planets(datos_limpios)
+
+        # Guardar resultados
+        resultados.to_csv('data/processed/predicciones_nuevos_candidatos.csv', index=False)
+        print("💾 Predicciones guardadas en 'predicciones_nuevos_candidatos.csv'")
+            
         # 4. Visualizaciones
         visualizer = OrionIIVisualizer(clean_data)
         visualizer.show_basic_stats()
         visualizer.create_visualizations()
         
         print("\n🎉 SISTEMA ORIONII OPERATIVO")
-        print("💡 El modelo puede analizar nuevos candidatos en tiempo real")
+
         
         return {
             'loader': loader,
             'trainer': trainer, 
             'detector': detector,
-            'data': clean_data
+            'data': clean_data,
+            'results': resultados
         }
         
     except Exception as e:

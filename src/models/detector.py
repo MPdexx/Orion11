@@ -53,24 +53,29 @@ class OrionIIDetector:
         if not self.loaded_model:
             raise ValueError("Modelo no cargado. No se pueden hacer predicciones.")
         
-        print(f"🔭 ANALIZANDO CANDIDATO A EXOPLANETA")
+        # Obtener nombre del candidato si está disponible
+        candidate_name = planet_features.get('kepoi_name', planet_features.get('kepler_name', 'Candidato Desconocido'))
+        
+        print(f"🔭 ANALIZANDO CANDIDATO: {candidate_name}")
         print("="*50)
         
-        # Convertir a DataFrame y asegurar todas las características esperadas
+        # Preparar características para predicción
         features_df = self._prepare_features(planet_features)
         
-        # Preprocesar características
-        processed_features = self._preprocess_features(features_df)
-        
         # Hacer predicción
-        prediction = self.model.predict(processed_features)[0]
-        probabilities = self.model.predict_proba(processed_features)[0]
+        try:
+            prediction = self.model.predict(features_df)[0]
+            probabilities = self.model.predict_proba(features_df)[0]
+            
+            # Interpretar resultados
+            result = self._interpret_prediction(prediction, probabilities, planet_features, candidate_name)
+            return result
+            
+        except Exception as e:
+            print(f"❌ Error en predicción: {e}")
+            # Fallback: predicción básica basada en koi_score
+            return self._fallback_prediction(planet_features, candidate_name)
         
-        # Interpretar resultados
-        result = self._interpret_prediction(prediction, probabilities, planet_features)
-        
-        return result
-    
     def _prepare_features(self, planet_features):
         """
         Preparar características para que coincidan exactamente con el entrenamiento
@@ -117,60 +122,126 @@ class OrionIIDetector:
         
         return processed_df
     
-    def _interpret_prediction(self, prediction, probabilities, original_features):
+    def _interpret_prediction(self, prediction, probabilities, original_features, candidate_name):
         """
         Interpretar y formatear los resultados de la predicción
         """
-        # Mapeo de predicciones
-        prediction_label = "EXOPLANETA CONFIRMADO" if prediction == 1 else "FALSO POSITIVO"
-        exoplanet_prob = probabilities[1] if len(probabilities) > 1 else probabilities[0]
+        # CLARIFICACIÓN DE CLASES:
+        # 0 = CANDIDATE, 1 = CONFIRMED, 2 = FALSE POSITIVE
+        
+        if prediction == 1:
+            prediction_label = "EXOPLANETA CONFIRMADO"
+            # Probabilidad de ser CONFIRMED (clase 1)
+            exoplanet_prob = probabilities[1]
+        elif prediction == 2:
+            prediction_label = "FALSO POSITIVO" 
+            # Probabilidad de ser FALSE POSITIVE (clase 2)
+            exoplanet_prob = probabilities[2]
+        else:  # prediction == 0
+            prediction_label = "CANDIDATO"
+            # Probabilidad de ser CANDIDATE (clase 0)
+            exoplanet_prob = probabilities[0]
+        
+        # 🎯 DEFINICIÓN CLARA: "Probabilidad de ser exoplaneta" = Probabilidad de clase CONFIRMED
+        confirmed_probability = probabilities[1]
         
         result = {
+            'candidato': candidate_name,
             'prediccion': prediction,
             'etiqueta': prediction_label,
-            'probabilidad_exoplaneta': exoplanet_prob,
+            'probabilidad_exoplaneta': confirmed_probability,  # ← SIEMPRE probabilidad de CONFIRMED
+            'probabilidad_clase_predicha': exoplanet_prob,    # ← Probabilidad de la clase que predijo
             'confianza': max(probabilities),
+            'todas_probabilidades': {
+                'CANDIDATO': probabilities[0],
+                'CONFIRMED': probabilities[1], 
+                'FALSE_POSITIVE': probabilities[2]
+            },
             'caracteristicas_analizadas': original_features
         }
         
-        # Análisis detallado
-        print(f"🎯 RESULTADO DEL ANÁLISIS:")
+        print(f"🎯 RESULTADO PARA {candidate_name}:")
         print(f"   Predicción: {prediction_label}")
-        print(f"   Probabilidad de ser exoplaneta: {exoplanet_prob:.4f}")
+        print(f"   Probabilidad de ser exoplaneta CONFIRMADO: {confirmed_probability:.4f}")
+        print(f"   Probabilidad de la clase predicha: {exoplanet_prob:.4f}")
         print(f"   Nivel de confianza: {'ALTO' if result['confianza'] >= 0.8 else 'MEDIO' if result['confianza'] >= 0.6 else 'BAJO'}")
         
+        # Mostrar todas las probabilidades para debugging
+        print(f"\n   📊 DISTRIBUCIÓN DE PROBABILIDADES:")
+        print(f"   🟡 CANDIDATO: {probabilities[0]:.4f}")
+        print(f"   🟢 CONFIRMED: {probabilities[1]:.4f}") 
+        print(f"   🔴 FALSE POSITIVE: {probabilities[2]:.4f}")
+        
         # Análisis de características clave
-        self._analyze_characteristics(original_features, exoplanet_prob)
+        self._analyze_characteristics(original_features, confirmed_probability, candidate_name)
         
         return result
     
-    
 
-    def _analyze_characteristics(self, features, exoplanet_prob):
+    def _analyze_characteristics(self, features, exoplanet_prob, candidate_name):
         """
         Analizar características específicas del candidato
         """
-        print(f"\n🔍 ANÁLISIS DETALLADO:")
+        print(f"\n🔍 ANÁLISIS DETALLADO DE {candidate_name}:")
         
         if 'koi_score' in features:
             score = features['koi_score']
-            print(f"   📊 KOI Score: {score:.3f} {'(ALTO)' if score > 0.7 else '(MEDIO)' if score > 0.3 else '(BAJO)'}")
+            print(f"   📊 KOI Score Original: {score:.3f} {'(ALTO)' if score > 0.7 else '(MEDIO)' if score > 0.3 else '(BAJO)'}")
         
-        # Análisis de flags de falsos positivos
+        # Análisis de parámetros físicos
+        if 'koi_period' in features:
+            period = features['koi_period']
+            period_analysis = " (cercano)" if period < 20 else " (lejano)" if period > 100 else " (medio)"
+            print(f"   ⏱️  Período orbital: {period:.1f} días{period_analysis}")
+        
+        if 'koi_prad' in features:
+            prad = features['koi_prad']
+            size_analysis = " (Tierra)" if 0.8 <= prad <= 1.5 else " (mini-Neptuno)" if prad <= 4 else " (gigante)"
+            print(f"   📏 Radio planetario: {prad:.1f} radios terrestres{size_analysis}")
+        
+        if 'koi_teq' in features:
+            teq = features['koi_teq']
+            temp_analysis = " (habitable 🌍)" if 200 <= teq <= 330 else " (frío)" if teq < 200 else " (caliente)"
+            print(f"   🌡️  Temperatura: {teq:.0f} K{temp_analysis}")
+        
+        # Comparar KOI Score vs Nuestro Modelo
+        if 'koi_score' in features:
+            koi_score = features['koi_score']
+            our_score = exoplanet_prob
+            difference = our_score - koi_score
+            
+            print(f"\n   📊 COMPARACIÓN DE CONFIANZA:")
+            print(f"   🤖 OrionII: {our_score:.3f}")
+            print(f"   🛰️  KOI: {koi_score:.3f}")
+            
+            if difference > 0.2:
+                print(f"   ✅ Nuestro modelo es MÁS optimista que KOI")
+            elif difference < -0.2:
+                print(f"   ⚠️  Nuestro modelo es MÁS conservador que KOI")
+            else:
+                print(f"   📍 Ambos modelos tienen confianza similar")
+        
+        # Verificar flags de falsos positivos
         fp_flags = ['koi_fpflag_nt', 'koi_fpflag_ss', 'koi_fpflag_co', 'koi_fpflag_ec']
-        active_flags = [flag for flag in fp_flags if flag in features and features[flag] == 1]
+        active_flags = []
+        for flag in fp_flags:
+            if flag in features and features[flag] == 1:
+                active_flags.append(flag)
+        
         if active_flags:
             print(f"   ⚠️  Flags de falso positivo activos: {active_flags}")
+        else:
+            print(f"   ✅ Ningún flag de falso positivo activo")
         
         # Recomendación basada en probabilidad
+        print(f"\n   💡 RECOMENDACIÓN PARA {candidate_name}:")
         if exoplanet_prob >= 0.8:
-            print(f"   💡 RECOMENDACIÓN: Fuertes indicios de exoplaneta real. Prioridad ALTA para observación adicional.")
+            print(f"   🎯 ALTA PRIORIDAD: Fuertes indicios de exoplaneta real")
         elif exoplanet_prob >= 0.6:
-            print(f"   💡 RECOMENDACIÓN: Posible exoplaneta. Requiere observación adicional.")
+            print(f"   🔍 MEDIA PRIORIDAD: Posible exoplaneta, requiere más observación")
         else:
-            print(f"   💡 RECOMENDACIÓN: Probable falso positivo. Baja prioridad.")
-
-    # ... (el resto de los métodos permanece igual)
+            print(f"   📉 BAJA PRIORIDAD: Probable falso positivo")
+        # ... (el resto de los métodos permanece igual)
 
     def predict_batch_planets(self, planets_dataframe):
         """
