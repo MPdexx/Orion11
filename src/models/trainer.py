@@ -90,7 +90,7 @@ class OrionIITrainer:
         
         return self.metrics
     
-    def save_model(self, file_path='orionii_exoplanet_model.joblib'):
+    def save_model(self, file_path='data/processed/orion11_exoplanet_model.joblib'):
         """
         Guardar modelo entrenado
         """

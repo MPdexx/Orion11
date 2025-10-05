@@ -12,14 +12,14 @@ from models.detector import OrionIIDetector
 
 def main():
     """Función principal para ejecutar la demo de OrionII"""
-    print("🚀 ORIONII - SISTEMA DE DETECCIÓN DE EXOPLANETAS")
+    print("🚀 ORION-11 - SISTEMA DE DETECCIÓN DE EXOPLANETAS")
     print("="*60)
     
-    # REEMPLAZA CON TUS RUTAS REALES
+    # Rutas de archivos que se van a procesar
     file_paths = ['data/raw/cumulative_2025.09.16_12.35.17.csv', 'data/raw/q1_q17_dr25_koi_2025.10.04_12.29.09.csv']
     
     try:
-        # 1. Cargar, limpiar y entrenar
+        # 1. Cargar, limpiar y procesar
         loader = OrionIIDataLoader()
         raw_data = loader.load_koi_data(file_paths)
         clean_data = loader.clean_koi_data()
