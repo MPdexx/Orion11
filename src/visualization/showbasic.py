@@ -13,7 +13,7 @@ class OrionIIVisualizer:
             return
         
         print("\n" + "="*60)
-        print("📈 ESTADÍSTICAS BÁSICAS DE ORIONII")
+        print("📈 ESTADÍSTICAS BÁSICAS DE ORION-11")
         print("="*60)
         print(f"🪐 Total de objetos KOI: {len(self.data):,}")
         print(f"📋 Columnas disponibles: {len(self.data.columns)}")
@@ -42,7 +42,7 @@ class OrionIIVisualizer:
         print("\n🎨 Generando visualizaciones...")
         
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
-        fig.suptitle('Análisis Exploratorio - Datos KOI (OrionII)', fontsize=16, fontweight='bold')
+        fig.suptitle('Análisis Exploratorio - Datos KOI (Orion-11)', fontsize=16, fontweight='bold')
         
         # 1. Distribución de disposiciones
         if 'koi_disposition' in self.data.columns:

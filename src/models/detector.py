@@ -6,7 +6,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 class OrionIIDetector:
-    def __init__(self, model_path='models/orionii_best_model.joblib'):
+    def __init__(self, model_path='models/orion11_best_model.joblib'):
         self.model_path = model_path
         self.model = None
         self.model_type = None
@@ -211,7 +211,7 @@ class OrionIIDetector:
             difference = our_score - koi_score
             
             print(f"\n   📊 COMPARACIÓN DE CONFIANZA:")
-            print(f"   🤖 OrionII: {our_score:.3f}")
+            print(f"   🤖 Orion11: {our_score:.3f}")
             print(f"   🛰️  KOI: {koi_score:.3f}")
             
             if difference > 0.2:

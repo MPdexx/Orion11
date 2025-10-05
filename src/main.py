@@ -30,7 +30,7 @@ def main():
         trainer.train(X_train, y_train)
         trainer.evaluate(X_test, y_test, loader.label_encoder)
 
-        model_save_path = 'data/processed/orionii_trained_model.joblib'
+        model_save_path = 'data/processed/orion11_trained_model.joblib'
         trainer.save_model(model_save_path)
         print(f"💾 Modelo guardado en: {model_save_path}")
         
@@ -38,7 +38,7 @@ def main():
         print("\n" + "🔭 MÓDULO DE DETECCIÓN EN TIEMPO REAL")
         print("="*50)
         
-        detector = OrionIIDetector('data/processed/orionii_best_model.joblib')
+        detector = OrionIIDetector('data/processed/orion11_best_model.joblib')
         
         # FASE 2: PREDECIR con tabla nueva
         print("\n🔭 FASE 2: PREDICIENDO NUEVOS CANDIDATOS")
@@ -63,7 +63,7 @@ def main():
         visualizer.show_basic_stats()
         visualizer.create_visualizations()
         
-        print("\n🎉 SISTEMA ORIONII OPERATIVO")
+        print("\n🎉 SISTEMA ORION-11 OPERATIVO")
 
         
         return {
